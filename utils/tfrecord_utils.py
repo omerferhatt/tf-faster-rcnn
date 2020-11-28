@@ -1,6 +1,7 @@
 import os
 import re
 import glob
+import argparse
 
 import cv2
 import tensorflow as tf
@@ -16,42 +17,37 @@ def image_example(image_path, output_shape):
         image = cv2.resize(image, dsize=output_shape)
         image_shape = image.shape
         image_string = cv2.imencode('.png', image)[1].tostring()
-    except IndexError as e:
-        print(e, 'Indexing occurred')
+        feature = {
+            'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[0]])),
+            'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[1]])),
+            'depth': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[2]])),
+            'total_human': tf.train.Feature(int64_list=tf.train.Int64List(value=[len(label_x)])),
+            'x': tf.train.Feature(float_list=tf.train.FloatList(value=label_x)),
+            'y': tf.train.Feature(float_list=tf.train.FloatList(value=label_y)),
+            'image_raw': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_string]))
+        }
+        return tf.train.Example(features=tf.train.Features(feature=feature))
 
-    feature = {
-        'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[0]])),
-        'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[1]])),
-        'depth': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[2]])),
-        'x': tf.train.Feature(float_list=tf.train.FloatList(value=label_x)),
-        'y': tf.train.Feature(float_list=tf.train.FloatList(value=label_y)),
-        'image_raw': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_string]))
-    }
-    return tf.train.Example(features=tf.train.Features(feature=feature))
+    except Exception as e:
+        print(e)
 
 
-def main():
-    train_path = "/home/ferhat/PycharmProjects/crowd-density-dl/data/Train"
-    test_path = "/home/ferhat/PycharmProjects/crowd-density-dl/data/Test"
-    train_record_file = '/home/ferhat/PycharmProjects/tf-faster-rcnn/data/train_images.tfrecords'
-    test_record_file = '/home/ferhat/PycharmProjects/tf-faster-rcnn/data/test_images.tfrecords'
-
+def write_record(train_path, test_path, train_record_file, test_record_file):
     for path, record_file in zip([train_path, test_path], [train_record_file, test_record_file]):
         fn_list = glob.glob(os.path.join(path, '*.*'))
         with tf.io.TFRecordWriter(record_file) as writer:
             for file in fn_list:
                 if re.search(r'.*jpg$|.*jpeg$|.*png$', file.lower()):
                     try:
-                        tf_example = image_example(file, args.output_shape)
+                        tf_example = image_example(file, arg.output_shape)
                     except Exception as e:
                         print('Error creating tf.Example', e)
                         continue
                     writer.write(tf_example.SerializeToString())
 
 
-if __name__ == '__main__':
-    # main()
-    raw_image_dataset = tf.data.TFRecordDataset('/home/ferhat/PycharmProjects/tf-faster-rcnn/data/train_images.tfrecords')
+def read_record(tf_record_path='/home/ferhat/PycharmProjects/tf-faster-rcnn/data/train_images.tfrecords'):
+    raw_image_dataset = tf.data.TFRecordDataset(tf_record_path)
     image_feature_description = {
         'height': tf.io.FixedLenFeature([], tf.int64),
         'width': tf.io.FixedLenFeature([], tf.int64),
@@ -65,9 +61,24 @@ if __name__ == '__main__':
         # Parse the input tf.train.Example proto using the dictionary above.
         return tf.io.parse_single_example(example_proto, image_feature_description)
 
-    parsed_image_dataset = raw_image_dataset.map(_parse_image_function)
+    return raw_image_dataset.map(_parse_image_function)
 
-    for image_features in parsed_image_dataset:
+
+def parser():
+    pars = argparse.ArgumentParser()
+    pars.add_argument('--train-data-path', type=str,
+                      default='/home/ferhat/PycharmProjects/crowd-density-dl/data/Train')
+    pars.add_argument('--test-data-path', type=str,
+                      default='/home/ferhat/PycharmProjects/crowd-density-dl/data/Test')
+    pars.add_argument('--train-record', type=str,
+                      default='/home/ferhat/PycharmProjects/tf-faster-rcnn/data/train_images.tfrecords')
+    pars.add_argument('--test-record', type=str,
+                      default='/home/ferhat/PycharmProjects/tf-faster-rcnn/data/test_images.tfrecords')
+    return pars.parse_args()
+
+
+def test_record(dataset):
+    for image_features in dataset:
         image_raw = tf.io.decode_image(image_features['image_raw']).numpy()
         image_raw = cv2.cvtColor(image_raw, cv2.COLOR_BGR2RGB)
         cv2.imshow('im', image_raw)
@@ -77,3 +88,9 @@ if __name__ == '__main__':
         elif key == ord('q'):
             cv2.destroyAllWindows()
             break
+
+
+if __name__ == '__main__':
+    arg = parser()
+    parsed_image_dataset = read_record()
+    test_record(parsed_image_dataset)
