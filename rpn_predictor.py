@@ -1,4 +1,5 @@
 import tensorflow as tf
+
 from utils import io_utils, data_utils, train_utils, bbox_utils, drawing_utils
 
 args = io_utils.handle_args()
@@ -34,10 +35,10 @@ if use_custom_images:
     img_paths = data_utils.get_custom_imgs(custom_image_path)
     total_items = len(img_paths)
     test_data = tf.data.Dataset.from_generator(lambda: data_utils.custom_data_generator(
-                                               img_paths, img_size, img_size), data_types, data_shapes)
+        img_paths, img_size, img_size), data_types, data_shapes)
 else:
-    test_data = test_data.map(lambda x : data_utils.preprocessing(x, img_size, img_size))
-#
+    test_data = test_data.map(lambda x: data_utils.preprocessing(x, img_size, img_size))
+
 test_data = test_data.padded_batch(batch_size, padded_shapes=data_shapes, padding_values=padding_values)
 
 rpn_model, _ = get_model(hyper_params)

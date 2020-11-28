@@ -1,8 +1,10 @@
 import os
+
+import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from PIL import Image
-import numpy as np
+
 
 def preprocessing(image_data, final_height, final_width, apply_augmentation=False, evaluate=False):
     """Image resizing operation handled before batch operations.
@@ -28,12 +30,14 @@ def preprocessing(image_data, final_height, final_width, apply_augmentation=Fals
         img, gt_boxes = randomly_apply_operation(flip_horizontally, img, gt_boxes)
     return img, gt_boxes, gt_labels
 
+
 def get_random_bool():
     """Generating random boolean.
     outputs:
         random boolean 0d tensor
     """
     return tf.greater(tf.random.uniform((), dtype=tf.float32), 0.5)
+
 
 def randomly_apply_operation(operation, img, gt_boxes):
     """Randomly applying given method to image and ground truth boxes.
@@ -51,6 +55,7 @@ def randomly_apply_operation(operation, img, gt_boxes):
         lambda: (img, gt_boxes)
     )
 
+
 def flip_horizontally(img, gt_boxes):
     """Flip image horizontally and adjust the ground truth boxes.
     inputs:
@@ -62,10 +67,11 @@ def flip_horizontally(img, gt_boxes):
     """
     flipped_img = tf.image.flip_left_right(img)
     flipped_gt_boxes = tf.stack([gt_boxes[..., 0],
-                                1.0 - gt_boxes[..., 3],
-                                gt_boxes[..., 2],
-                                1.0 - gt_boxes[..., 1]], -1)
+                                 1.0 - gt_boxes[..., 3],
+                                 gt_boxes[..., 2],
+                                 1.0 - gt_boxes[..., 1]], -1)
     return flipped_img, flipped_gt_boxes
+
 
 def get_dataset(name, split, data_dir="~/tensorflow_datasets"):
     """Get tensorflow dataset split and info.
@@ -81,6 +87,7 @@ def get_dataset(name, split, data_dir="~/tensorflow_datasets"):
     dataset, info = tfds.load(name, split=split, data_dir=data_dir, with_info=True)
     return dataset, info
 
+
 def get_total_item_size(info, split):
     """Get total item size for given split.
     inputs:
@@ -94,6 +101,7 @@ def get_total_item_size(info, split):
         return info.splits["train"].num_examples + info.splits["validation"].num_examples
     return info.splits[split].num_examples
 
+
 def get_labels(info):
     """Get label names list.
     inputs:
@@ -103,6 +111,7 @@ def get_labels(info):
     """
     return info.features["labels"].names
 
+
 def get_custom_imgs(custom_image_path):
     """Generating a list of images for given path.
     inputs:
@@ -111,11 +120,12 @@ def get_custom_imgs(custom_image_path):
         custom image list = [path1, path2]
     """
     img_paths = []
-    for path, dir, filenames in os.walk(custom_image_path):
+    for path, _, filenames in os.walk(custom_image_path):
         for filename in filenames:
             img_paths.append(os.path.join(path, filename))
         break
     return img_paths
+
 
 def custom_data_generator(img_paths, final_height, final_width):
     """Yielding custom entities as dataset.
@@ -135,23 +145,26 @@ def custom_data_generator(img_paths, final_height, final_width):
         img = tf.image.convert_image_dtype(img, tf.float32)
         yield img, tf.constant([[]], dtype=tf.float32), tf.constant([], dtype=tf.int32)
 
+
 def get_data_types():
     """Generating data types for tensorflow datasets.
     outputs:
         data types = output data types for (images, ground truth boxes, ground truth labels)
     """
-    return (tf.float32, tf.float32, tf.int32)
+    return tf.float32, tf.float32, tf.int32
+
 
 def get_data_shapes():
     """Generating data shapes for tensorflow datasets.
     outputs:
         data shapes = output data shapes for (images, ground truth boxes, ground truth labels)
     """
-    return ([None, None, None], [None, None], [None,])
+    return [None, None, None], [None, None], [None, ]
+
 
 def get_padding_values():
     """Generating padding values for missing values in batch for tensorflow datasets.
     outputs:
         padding values = padding values with dtypes for (images, ground truth boxes, ground truth labels)
     """
-    return (tf.constant(0, tf.float32), tf.constant(0, tf.float32), tf.constant(-1, tf.int32))
+    return tf.constant(0, tf.float32), tf.constant(0, tf.float32), tf.constant(-1, tf.int32)

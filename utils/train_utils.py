@@ -1,21 +1,24 @@
-import tensorflow as tf
 import math
+
+import tensorflow as tf
+
 from utils import bbox_utils
 
 RPN = {
     "vgg16": {
         "img_size": 500,
         "feature_map_shape": 31,
-        "anchor_ratios": [1., 2., 1./2.],
+        "anchor_ratios": [1., 2., 1. / 2.],
         "anchor_scales": [128, 256, 512],
     },
     "mobilenet_v2": {
         "img_size": 500,
         "feature_map_shape": 32,
-        "anchor_ratios": [1., 2., 1./2.],
+        "anchor_ratios": [1., 2., 1. / 2.],
         "anchor_scales": [128, 256, 512],
     }
 }
+
 
 def get_hyper_params(backbone, **kwargs):
     """Generating hyper params in a dynamic way.
@@ -41,6 +44,7 @@ def get_hyper_params(backbone, **kwargs):
     hyper_params["anchor_count"] = len(hyper_params["anchor_ratios"]) * len(hyper_params["anchor_scales"])
     return hyper_params
 
+
 def get_step_size(total_items, batch_size):
     """Get step size for given total item size and batch size.
     inputs:
@@ -50,6 +54,7 @@ def get_step_size(total_items, batch_size):
         step_size = number of step size for model training
     """
     return math.ceil(total_items / batch_size)
+
 
 def randomly_select_xyz_mask(mask, select_xyz):
     """Selecting x, y, z number of True elements for corresponding batch and replacing others to False
@@ -68,6 +73,7 @@ def randomly_select_xyz_mask(mask, select_xyz):
     selected_mask = tf.less(sorted_mask_indices, tf.expand_dims(select_xyz, 1))
     return tf.logical_and(mask, selected_mask)
 
+
 def faster_rcnn_generator(dataset, anchors, hyper_params):
     """Tensorflow data generator for fit method, yielding inputs and outputs.
     inputs:
@@ -85,6 +91,7 @@ def faster_rcnn_generator(dataset, anchors, hyper_params):
             bbox_deltas, bbox_labels = calculate_rpn_actual_outputs(anchors, gt_boxes, gt_labels, hyper_params)
             yield (img, gt_boxes, gt_labels, bbox_deltas, bbox_labels), ()
 
+
 def rpn_generator(dataset, anchors, hyper_params):
     """Tensorflow data generator for fit method, yielding inputs and outputs.
     inputs:
@@ -101,6 +108,7 @@ def rpn_generator(dataset, anchors, hyper_params):
             img, gt_boxes, gt_labels = image_data
             bbox_deltas, bbox_labels = calculate_rpn_actual_outputs(anchors, gt_boxes, gt_labels, hyper_params)
             yield img, (bbox_deltas, bbox_labels)
+
 
 def calculate_rpn_actual_outputs(anchors, gt_boxes, gt_labels, hyper_params):
     """Generating one step data for training or inference.
@@ -139,7 +147,7 @@ def calculate_rpn_actual_outputs(anchors, gt_boxes, gt_labels, hyper_params):
     valid_max_indices = max_indices_each_column[valid_indices_cond]
     #
     scatter_bbox_indices = tf.stack([valid_indices[..., 0], valid_max_indices], 1)
-    max_pos_mask = tf.scatter_nd(scatter_bbox_indices, tf.fill((tf.shape(valid_indices)[0], ), True), tf.shape(pos_mask))
+    max_pos_mask = tf.scatter_nd(scatter_bbox_indices, tf.fill((tf.shape(valid_indices)[0],), True), tf.shape(pos_mask))
     pos_mask = tf.logical_or(pos_mask, max_pos_mask)
     pos_mask = randomly_select_xyz_mask(pos_mask, tf.constant([total_pos_bboxes], dtype=tf.int32))
     #
@@ -164,6 +172,7 @@ def calculate_rpn_actual_outputs(anchors, gt_boxes, gt_labels, hyper_params):
     #
     return bbox_deltas, bbox_labels
 
+
 def frcnn_cls_loss(*args):
     """Calculating faster rcnn class loss value.
     inputs:
@@ -183,6 +192,7 @@ def frcnn_cls_loss(*args):
     total_boxes = tf.maximum(1.0, tf.reduce_sum(mask))
     return conf_loss / total_boxes
 
+
 def rpn_cls_loss(*args):
     """Calculating rpn class loss value.
     Rpn actual class value should be 0 or 1.
@@ -199,6 +209,7 @@ def rpn_cls_loss(*args):
     output = tf.gather_nd(y_pred, indices)
     lf = tf.losses.BinaryCrossentropy()
     return lf(target, output)
+
 
 def reg_loss(*args):
     """Calculating rpn / faster rcnn regression loss value.

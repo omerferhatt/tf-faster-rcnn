@@ -1,7 +1,8 @@
 import tensorflow as tf
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.layers import Conv2D
-from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.models import Model
+
 
 def get_model(hyper_params):
     """Generating rpn model for given hyper params.
@@ -20,6 +21,7 @@ def get_model(hyper_params):
     rpn_reg_output = Conv2D(hyper_params["anchor_count"] * 4, (1, 1), activation="linear", name="rpn_reg")(output)
     rpn_model = Model(inputs=base_model.input, outputs=[rpn_reg_output, rpn_cls_output])
     return rpn_model, feature_extractor
+
 
 def init_model(model):
     """Initializing model with dummy data for load weights with optimizer state and also graph construction.

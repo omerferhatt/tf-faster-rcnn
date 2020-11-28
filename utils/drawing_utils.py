@@ -1,7 +1,9 @@
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from PIL import Image, ImageDraw
-import matplotlib.pyplot as plt
+
 from utils import bbox_utils
+
 
 def draw_grid_map(img, grid_map, stride):
     """Drawing grid intersection on given image.
@@ -27,6 +29,7 @@ def draw_grid_map(img, grid_map, stride):
     plt.imshow(image)
     plt.show()
 
+
 def draw_bboxes(imgs, bboxes):
     """Drawing bounding boxes on given images.
     inputs:
@@ -40,6 +43,7 @@ def draw_bboxes(imgs, bboxes):
     for img_with_bb in imgs_with_bb:
         plt.imshow(img_with_bb)
         plt.show()
+
 
 def draw_bboxes_with_labels(img, bboxes, label_indices, probs, labels):
     """Drawing bounding boxes with labels on given image.
@@ -71,13 +75,15 @@ def draw_bboxes_with_labels(img, bboxes, label_indices, probs, labels):
     plt.imshow(image)
     plt.show()
 
+
 def draw_predictions(dataset, pred_bboxes, pred_labels, pred_scores, labels, batch_size):
     for batch_id, image_data in enumerate(dataset):
         imgs, _, _ = image_data
         img_size = imgs.shape[1]
         start = batch_id * batch_size
         end = start + batch_size
-        batch_bboxes, batch_labels, batch_scores = pred_bboxes[start:end], pred_labels[start:end], pred_scores[start:end]
+        batch_bboxes, batch_labels, batch_scores = pred_bboxes[start:end], pred_labels[start:end], pred_scores[
+                                                                                                   start:end]
         for i, img in enumerate(imgs):
             denormalized_bboxes = bbox_utils.denormalize_bboxes(batch_bboxes[i], img_size, img_size)
             draw_bboxes_with_labels(img, denormalized_bboxes, batch_labels[i], batch_scores[i], labels)

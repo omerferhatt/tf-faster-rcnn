@@ -1,7 +1,9 @@
 import tensorflow as tf
+from tensorflow.keras.layers import Layer, Lambda, Input, TimeDistributed, Dense, Flatten, Dropout
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Layer, Lambda, Input, Conv2D, TimeDistributed, Dense, Flatten, BatchNormalization, Dropout
+
 from utils import bbox_utils, train_utils
+
 
 class Decoder(Layer):
     """Generating bounding boxes and labels from faster rcnn predictions.
@@ -17,6 +19,7 @@ class Decoder(Layer):
             1 to total label number
         pred_scores = (batch_size, top_n)
     """
+
     def __init__(self, variances, total_labels, max_total_size=200, score_threshold=0.5, **kwargs):
         super(Decoder, self).__init__(**kwargs)
         self.variances = variances
@@ -50,12 +53,13 @@ class Decoder(Layer):
         pred_labels = tf.where(tf.not_equal(pred_labels_map, 0), pred_label_probs, tf.zeros_like(pred_label_probs))
         #
         final_bboxes, final_scores, final_labels, _ = bbox_utils.non_max_suppression(
-                                                                    pred_bboxes, pred_labels,
-                                                                    max_output_size_per_class=self.max_total_size,
-                                                                    max_total_size=self.max_total_size,
-                                                                    score_threshold=self.score_threshold)
+            pred_bboxes, pred_labels,
+            max_output_size_per_class=self.max_total_size,
+            max_total_size=self.max_total_size,
+            score_threshold=self.score_threshold)
         #
         return final_bboxes, final_labels, final_scores
+
 
 class RoIBBox(Layer):
     """Generating bounding boxes from rpn predictions.
@@ -87,7 +91,8 @@ class RoIBBox(Layer):
         anchors = self.anchors
         #
         pre_nms_topn = self.hyper_params["pre_nms_topn"]
-        post_nms_topn = self.hyper_params["train_nms_topn"] if self.mode == "training" else self.hyper_params["test_nms_topn"]
+        post_nms_topn = self.hyper_params["train_nms_topn"] if self.mode == "training" else self.hyper_params[
+            "test_nms_topn"]
         nms_iou_threshold = self.hyper_params["nms_iou_threshold"]
         variances = self.hyper_params["variances"]
         total_anchors = anchors.shape[0]
@@ -107,11 +112,12 @@ class RoIBBox(Layer):
         pre_roi_labels = tf.reshape(pre_roi_labels, (batch_size, pre_nms_topn, 1))
         #
         roi_bboxes, _, _, _ = bbox_utils.non_max_suppression(pre_roi_bboxes, pre_roi_labels,
-                                                          max_output_size_per_class=post_nms_topn,
-                                                          max_total_size=post_nms_topn,
-                                                          iou_threshold=nms_iou_threshold)
+                                                             max_output_size_per_class=post_nms_topn,
+                                                             max_total_size=post_nms_topn,
+                                                             iou_threshold=nms_iou_threshold)
         #
         return tf.stop_gradient(roi_bboxes)
+
 
 class RoIDelta(Layer):
     """Calculating faster rcnn actual bounding box deltas and labels.
@@ -174,6 +180,7 @@ class RoIDelta(Layer):
         #
         return tf.stop_gradient(roi_bbox_deltas), tf.stop_gradient(roi_bbox_labels)
 
+
 class RoIPooling(Layer):
     """Reducing all feature maps to same size.
     Firstly cropping bounding boxes from the feature maps and then resizing it to the pooling size.
@@ -204,7 +211,7 @@ class RoIPooling(Layer):
         row_size = batch_size * total_bboxes
         # We need to arange bbox indices for each batch
         pooling_bbox_indices = tf.tile(tf.expand_dims(tf.range(batch_size), axis=1), (1, total_bboxes))
-        pooling_bbox_indices = tf.reshape(pooling_bbox_indices, (-1, ))
+        pooling_bbox_indices = tf.reshape(pooling_bbox_indices, (-1,))
         pooling_bboxes = tf.reshape(roi_bboxes, (row_size, 4))
         # Crop to bounding box size then resize to pooling size
         pooling_feature_map = tf.image.crop_and_resize(
@@ -213,8 +220,11 @@ class RoIPooling(Layer):
             pooling_bbox_indices,
             pooling_size
         )
-        final_pooling_feature_map = tf.reshape(pooling_feature_map, (batch_size, total_bboxes, pooling_feature_map.shape[1], pooling_feature_map.shape[2], pooling_feature_map.shape[3]))
+        final_pooling_feature_map = tf.reshape(pooling_feature_map, (
+        batch_size, total_bboxes, pooling_feature_map.shape[1], pooling_feature_map.shape[2],
+        pooling_feature_map.shape[3]))
         return final_pooling_feature_map
+
 
 def get_model(feature_extractor, rpn_model, anchors, hyper_params, mode="training"):
     """Generating rpn model for given backbone base model and hyper params.
@@ -241,22 +251,28 @@ def get_model(feature_extractor, rpn_model, anchors, hyper_params, mode="trainin
     output = TimeDistributed(Dropout(0.5), name="frcnn_dropout1")(output)
     output = TimeDistributed(Dense(4096, activation="relu"), name="frcnn_fc2")(output)
     output = TimeDistributed(Dropout(0.5), name="frcnn_dropout2")(output)
-    frcnn_cls_predictions = TimeDistributed(Dense(hyper_params["total_labels"], activation="softmax"), name="frcnn_cls")(output)
-    frcnn_reg_predictions = TimeDistributed(Dense(hyper_params["total_labels"] * 4, activation="linear"), name="frcnn_reg")(output)
+    frcnn_cls_predictions = TimeDistributed(Dense(hyper_params["total_labels"], activation="softmax"),
+                                            name="frcnn_cls")(output)
+    frcnn_reg_predictions = TimeDistributed(Dense(hyper_params["total_labels"] * 4, activation="linear"),
+                                            name="frcnn_reg")(output)
     #
     if mode == "training":
         input_gt_boxes = Input(shape=(None, 4), name="input_gt_boxes", dtype=tf.float32)
-        input_gt_labels = Input(shape=(None, ), name="input_gt_labels", dtype=tf.int32)
-        rpn_cls_actuals = Input(shape=(None, None, hyper_params["anchor_count"]), name="input_rpn_cls_actuals", dtype=tf.float32)
+        input_gt_labels = Input(shape=(None,), name="input_gt_labels", dtype=tf.int32)
+        rpn_cls_actuals = Input(shape=(None, None, hyper_params["anchor_count"]), name="input_rpn_cls_actuals",
+                                dtype=tf.float32)
         rpn_reg_actuals = Input(shape=(None, 4), name="input_rpn_reg_actuals", dtype=tf.float32)
         frcnn_reg_actuals, frcnn_cls_actuals = RoIDelta(hyper_params, name="roi_deltas")(
-                                                        [roi_bboxes, input_gt_boxes, input_gt_labels])
+            [roi_bboxes, input_gt_boxes, input_gt_labels])
         #
         loss_names = ["rpn_reg_loss", "rpn_cls_loss", "frcnn_reg_loss", "frcnn_cls_loss"]
         rpn_reg_loss_layer = Lambda(train_utils.reg_loss, name=loss_names[0])([rpn_reg_actuals, rpn_reg_predictions])
-        rpn_cls_loss_layer = Lambda(train_utils.rpn_cls_loss, name=loss_names[1])([rpn_cls_actuals, rpn_cls_predictions])
-        frcnn_reg_loss_layer = Lambda(train_utils.reg_loss, name=loss_names[2])([frcnn_reg_actuals, frcnn_reg_predictions])
-        frcnn_cls_loss_layer = Lambda(train_utils.frcnn_cls_loss, name=loss_names[3])([frcnn_cls_actuals, frcnn_cls_predictions])
+        rpn_cls_loss_layer = Lambda(train_utils.rpn_cls_loss, name=loss_names[1])(
+            [rpn_cls_actuals, rpn_cls_predictions])
+        frcnn_reg_loss_layer = Lambda(train_utils.reg_loss, name=loss_names[2])(
+            [frcnn_reg_actuals, frcnn_reg_predictions])
+        frcnn_cls_loss_layer = Lambda(train_utils.frcnn_cls_loss, name=loss_names[3])(
+            [frcnn_cls_actuals, frcnn_cls_predictions])
         #
         frcnn_model = Model(inputs=[input_img, input_gt_boxes, input_gt_labels,
                                     rpn_reg_actuals, rpn_cls_actuals],
@@ -271,11 +287,13 @@ def get_model(feature_extractor, rpn_model, anchors, hyper_params, mode="trainin
             frcnn_model.add_metric(layer.output, name=layer_name, aggregation="mean")
         #
     else:
-        bboxes, labels, scores = Decoder(hyper_params["variances"], hyper_params["total_labels"], name="faster_rcnn_decoder")(
-                                         [roi_bboxes, frcnn_reg_predictions, frcnn_cls_predictions])
+        bboxes, labels, scores = Decoder(hyper_params["variances"], hyper_params["total_labels"],
+                                         name="faster_rcnn_decoder")(
+            [roi_bboxes, frcnn_reg_predictions, frcnn_cls_predictions])
         frcnn_model = Model(inputs=input_img, outputs=[bboxes, labels, scores])
         #
     return frcnn_model
+
 
 def init_model(model, hyper_params):
     """Generating dummy data for initialize model.
@@ -291,5 +309,6 @@ def init_model(model, hyper_params):
     gt_boxes = tf.random.uniform((1, 1, 4))
     gt_labels = tf.random.uniform((1, 1), maxval=hyper_params["total_labels"], dtype=tf.int32)
     bbox_deltas = tf.random.uniform((1, total_anchors, 4))
-    bbox_labels = tf.random.uniform((1, feature_map_shape, feature_map_shape, hyper_params["anchor_count"]), maxval=1, dtype=tf.float32)
+    bbox_labels = tf.random.uniform((1, feature_map_shape, feature_map_shape, hyper_params["anchor_count"]), maxval=1,
+                                    dtype=tf.float32)
     model([img, gt_boxes, gt_labels, bbox_deltas, bbox_labels])

@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint
+
 from utils import io_utils, data_utils, train_utils, bbox_utils
 
 args = io_utils.handle_args()
@@ -34,10 +35,10 @@ if with_voc_2012:
 labels = data_utils.get_labels(dataset_info)
 # We add 1 class for background
 hyper_params["total_labels"] = len(labels) + 1
-#
+
 img_size = hyper_params["img_size"]
-train_data = train_data.map(lambda x : data_utils.preprocessing(x, img_size, img_size, apply_augmentation=True))
-val_data = val_data.map(lambda x : data_utils.preprocessing(x, img_size, img_size))
+train_data = train_data.map(lambda x: data_utils.preprocessing(x, img_size, img_size, apply_augmentation=True))
+val_data = val_data.map(lambda x: data_utils.preprocessing(x, img_size, img_size))
 
 data_shapes = data_utils.get_data_shapes()
 padding_values = data_utils.get_padding_values()

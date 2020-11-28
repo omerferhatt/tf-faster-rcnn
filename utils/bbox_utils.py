@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 def generate_base_anchors(hyper_params):
     """Generating top left anchors for given anchor_ratios, anchor_scales and image size values.
     inputs:
@@ -20,6 +21,7 @@ def generate_base_anchors(hyper_params):
             base_anchors.append([-h / 2, -w / 2, h / 2, w / 2])
     return tf.cast(base_anchors, dtype=tf.float32)
 
+
 def generate_anchors(hyper_params):
     """Broadcasting base_anchors and generating all anchors for given image parameters.
     inputs:
@@ -36,7 +38,7 @@ def generate_anchors(hyper_params):
     grid_coords = tf.cast(tf.range(0, feature_map_shape) / feature_map_shape + stride / 2, dtype=tf.float32)
     #
     grid_x, grid_y = tf.meshgrid(grid_coords, grid_coords)
-    flat_grid_x, flat_grid_y = tf.reshape(grid_x, (-1, )), tf.reshape(grid_y, (-1, ))
+    flat_grid_x, flat_grid_y = tf.reshape(grid_x, (-1,)), tf.reshape(grid_y, (-1,))
     grid_map = tf.stack([flat_grid_y, flat_grid_x, flat_grid_y, flat_grid_x], axis=-1)
     #
     base_anchors = generate_base_anchors(hyper_params)
@@ -44,6 +46,7 @@ def generate_anchors(hyper_params):
     anchors = tf.reshape(base_anchors, (1, -1, 4)) + tf.reshape(grid_map, (-1, 1, 4))
     anchors = tf.reshape(anchors, (-1, 4))
     return tf.clip_by_value(anchors, 0, 1)
+
 
 def non_max_suppression(pred_bboxes, pred_labels, **kwargs):
     """Applying non maximum suppression.
@@ -68,6 +71,7 @@ def non_max_suppression(pred_bboxes, pred_labels, **kwargs):
         pred_labels,
         **kwargs
     )
+
 
 def get_bboxes_from_deltas(anchors, deltas):
     """Calculating bounding boxes for given bounding box and delta values.
@@ -95,6 +99,7 @@ def get_bboxes_from_deltas(anchors, deltas):
     #
     return tf.stack([y1, x1, y2, x2], axis=-1)
 
+
 def get_deltas_from_bboxes(bboxes, gt_boxes):
     """Calculating bounding box deltas for given bounding box and ground truth boxes.
     inputs:
@@ -117,11 +122,13 @@ def get_deltas_from_bboxes(bboxes, gt_boxes):
     bbox_width = tf.where(tf.equal(bbox_width, 0), 1e-3, bbox_width)
     bbox_height = tf.where(tf.equal(bbox_height, 0), 1e-3, bbox_height)
     delta_x = tf.where(tf.equal(gt_width, 0), tf.zeros_like(gt_width), tf.truediv((gt_ctr_x - bbox_ctr_x), bbox_width))
-    delta_y = tf.where(tf.equal(gt_height, 0), tf.zeros_like(gt_height), tf.truediv((gt_ctr_y - bbox_ctr_y), bbox_height))
+    delta_y = tf.where(tf.equal(gt_height, 0), tf.zeros_like(gt_height),
+                       tf.truediv((gt_ctr_y - bbox_ctr_y), bbox_height))
     delta_w = tf.where(tf.equal(gt_width, 0), tf.zeros_like(gt_width), tf.math.log(gt_width / bbox_width))
     delta_h = tf.where(tf.equal(gt_height, 0), tf.zeros_like(gt_height), tf.math.log(gt_height / bbox_height))
     #
     return tf.stack([delta_y, delta_x, delta_h, delta_w], axis=-1)
+
 
 def generate_iou_map(bboxes, gt_boxes):
     """Calculating iou values for each ground truth boxes in batched manner.
@@ -149,6 +156,7 @@ def generate_iou_map(bboxes, gt_boxes):
     # Intersection over Union
     return intersection_area / union_area
 
+
 def normalize_bboxes(bboxes, height, width):
     """Normalizing bounding boxes.
     inputs:
@@ -164,6 +172,7 @@ def normalize_bboxes(bboxes, height, width):
     y2 = bboxes[..., 2] / height
     x2 = bboxes[..., 3] / width
     return tf.stack([y1, x1, y2, x2], axis=-1)
+
 
 def denormalize_bboxes(bboxes, height, width):
     """Denormalizing bounding boxes.

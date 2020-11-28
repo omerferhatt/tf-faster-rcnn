@@ -1,6 +1,8 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+
 from utils import bbox_utils
+
 
 def init_stats(labels):
     stats = {}
@@ -15,6 +17,7 @@ def init_stats(labels):
             "scores": [],
         }
     return stats
+
 
 def update_stats(pred_bboxes, pred_labels, pred_scores, gt_boxes, gt_labels, stats):
     iou_map = bbox_utils.generate_iou_map(pred_bboxes, gt_boxes)
@@ -53,6 +56,7 @@ def update_stats(pred_bboxes, pred_labels, pred_scores, gt_boxes, gt_labels, sta
     #
     return stats
 
+
 def calculate_ap(recall, precision):
     ap = 0
     for r in np.arange(0, 1.1, 0.1):
@@ -62,6 +66,7 @@ def calculate_ap(recall, precision):
     # By definition AP = sum(max(precision whose recall is above r))/11
     ap /= 11
     return ap
+
 
 def calculate_mAP(stats):
     aps = []
@@ -84,13 +89,15 @@ def calculate_mAP(stats):
     mAP = np.mean(aps)
     return stats, mAP
 
+
 def evaluate_predictions(dataset, pred_bboxes, pred_labels, pred_scores, labels, batch_size):
     stats = init_stats(labels)
     for batch_id, image_data in enumerate(dataset):
         imgs, gt_boxes, gt_labels = image_data
         start = batch_id * batch_size
         end = start + batch_size
-        batch_bboxes, batch_labels, batch_scores = pred_bboxes[start:end], pred_labels[start:end], pred_scores[start:end]
+        batch_bboxes, batch_labels, batch_scores = pred_bboxes[start:end], pred_labels[start:end], pred_scores[
+                                                                                                   start:end]
         stats = update_stats(batch_bboxes, batch_labels, batch_scores, gt_boxes, gt_labels, stats)
     stats, mAP = calculate_mAP(stats)
     print("mAP: {}".format(float(mAP)))

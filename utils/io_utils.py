@@ -1,7 +1,9 @@
-import os
 import argparse
-import tensorflow as tf
+import os
 from datetime import datetime
+
+import tensorflow as tf
+
 
 def get_log_path(model_type, backbone="vgg16", custom_postfix=""):
     """Generating log path from model_type value for tensorboard.
@@ -13,6 +15,7 @@ def get_log_path(model_type, backbone="vgg16", custom_postfix=""):
         log_path = tensorboard log path, for example: "logs/rpn_mobilenet_v2/{date}"
     """
     return "logs/{}_{}{}/{}".format(model_type, backbone, custom_postfix, datetime.now().strftime("%Y%m%d-%H%M%S"))
+
 
 def get_model_path(model_type, backbone="vgg16"):
     """Generating model path from model_type value for save/load model weights.
@@ -28,6 +31,7 @@ def get_model_path(model_type, backbone="vgg16"):
     model_path = os.path.join(main_path, "{}_{}_model_weights.h5".format(model_type, backbone))
     return model_path
 
+
 def handle_args():
     """Handling of command line arguments using argparse library.
     outputs:
@@ -42,12 +46,14 @@ def handle_args():
     args = parser.parse_args()
     return args
 
+
 def is_valid_backbone(backbone):
     """Handling control of given backbone is valid or not.
     inputs:
         backbone = given string from command line
     """
     assert backbone in ["vgg16", "mobilenet_v2"]
+
 
 def handle_gpu_compatibility():
     """Handling of GPU issues for cuDNN initialize error and memory issues."""
